@@ -1,0 +1,48 @@
+{
+  "name": "homebridge-dahua-vto",
+  "displayName": "Dahua VTO",
+  "version": "1.0.0",
+  "description": "Homebridge plugin for Dahua VTO door stations — camera, lock, doorbell, two-way audio (Amcrest audio.cgi) and optional HKSV",
+  "main": "index.js",
+  "scripts": {
+    "test": "node -e \"require('./index.js');\""
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "homebridge",
+    "dahua",
+    "vto",
+    "doorbell",
+    "camera",
+    "intercom",
+    "two-way-audio",
+    "hksv"
+  ],
+  "engines": {
+    "node": "^18.20.4 || ^20.16.0 || ^22.5.1",
+    "homebridge": "^1.8.0 || ^2.0.0-beta.0"
+  },
+  "dependencies": {
+    "rtp-packet": "^0.1.1"
+  },
+  "peerDependencies": {
+    "homebridge": "^1.8.0 || ^2.0.0-beta.0"
+  },
+  "author": "Artem Goncharenko",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roysbike/homebridge-dahua-vto.git"
+  },
+  "bugs": {
+    "url": "https://github.com/roysbike/homebridge-dahua-vto/issues"
+  },
+  "homepage": "https://github.com/roysbike/homebridge-dahua-vto#readme",
+  "files": [
+    "index.js",
+    "config.schema.json",
+    "LICENSE",
+    "README.md",
+    "src"
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "pluginAlias": "DahuaVTO",
+  "pluginType": "platform",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Platform Name",
+        "type": "string",
+        "default": "Dahua VTO",
+        "description": "Internal platform name (Homebridge UI)."
+      },
+      "cameras": {
+        "title": "Door stations",
+        "type": "array",
+        "description": "One or more Dahua VTO / Amcrest-compatible door stations.",
+        "items": {
+          "type": "object",
+          "required": ["host", "password"],
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "default": "Dahua VTO",
+              "description": "Name shown in the Home app."
+            },
+            "host": {
+              "title": "Host / IP",
+              "type": "string",
+              "format": "hostname",
+              "placeholder": "192.168.1.30",
+              "description": "VTO IP address or hostname."
+            },
+            "username": {
+              "title": "Username",
+              "type": "string",
+              "default": "admin"
+            },
+            "password": {
+              "title": "Password",
+              "type": "string",
+              "format": "password"
+            },
+            "ssl": {
+              "title": "Use HTTPS for CGI",
+              "type": "boolean",
+              "default": false
+            },
+            "doorChannel": {
+              "title": "Door channel",
+              "type": "integer",
+              "default": 1,
+              "minimum": 0,
+              "description": "accessControl / audio.cgi channel (usually 1)."
+            },
+            "unlockSeconds": {
+              "title": "Unlock duration (seconds)",
+              "type": "integer",
+              "default": 5,
+              "minimum": 1,
+              "maximum": 60
+            },
+            "rtspUrl": {
+              "title": "RTSP URL override",
+              "type": "string",
+              "description": "Optional. Default: rtsp://user:pass@host:554/cam/realmonitor?channel=1&subtype=0"
+            },
+            "rtspSubtype": {
+              "title": "RTSP subtype (if no rtspUrl)",
+              "type": "integer",
+              "default": 0,
+              "description": "0 = main stream, 1 = sub stream."
+            },
+            "ffmpegPath": {
+              "title": "ffmpeg path",
+              "type": "string",
+              "default": "ffmpeg",
+              "description": "Use ffmpeg-for-homebridge for AAC-ELD talkback (libfdk_aac)."
+            },
+            "twoWayAudio": {
+              "title": "Two-way audio",
+              "type": "boolean",
+              "default": true,
+              "description": "Home mic → VTO speaker via audio.cgi (G.711A), Scrypted Amcrest style."
+            },
+            "hksv": {
+              "title": "HomeKit Secure Video",
+              "type": "boolean",
+              "default": true,
+              "description": "Requires HomePod / Apple TV hub and iCloud+."
+            },
+            "motionTimeoutMs": {
+              "title": "Motion clear timeout (ms)",
+              "type": "integer",
+              "default": 10000
+            },
+            "manufacturer": {
+              "title": "Manufacturer",
+              "type": "string",
+              "default": "Dahua"
+            },
+            "model": {
+              "title": "Model",
+              "type": "string",
+              "default": "VTO"
+            }
+          }
+        }
+      }
+    }
+  }
+}
