@@ -27,6 +27,10 @@ function normalizeDeviceConfig(raw) {
     manufacturer: raw.manufacturer || "Dahua",
     model: raw.model || "VTO",
     firmware: raw.firmware || "1.0.0",
+    // If user set these in config, keep them; otherwise refresh from magicBox.cgi
+    modelOverride: raw.model != null && String(raw.model).trim() !== "" && String(raw.model).trim() !== "VTO",
+    firmwareOverride: raw.firmware != null && String(raw.firmware).trim() !== "" && String(raw.firmware).trim() !== "1.0.0",
+    manufacturerOverride: raw.manufacturer != null && String(raw.manufacturer).trim() !== "" && String(raw.manufacturer).trim() !== "Dahua",
     ffmpegPath,
     rtspUrl,
     twoWayAudio,
@@ -63,9 +67,8 @@ class DahuaVtoAccessory {
     this.log = createLogger(log, this.config.debug, this.config.name);
 
     const { Service, Characteristic, Categories } = this.hap;
-
-    accessory
-      .getService(Service.AccessoryInformation)
+    this.infoService = accessory.getService(Service.AccessoryInformation);
+    this.infoService
       .setCharacteristic(Characteristic.Manufacturer, this.config.manufacturer)
       .setCharacteristic(Characteristic.Model, this.config.model)
       .setCharacteristic(Characteristic.SerialNumber, this.config.dahua.host)
@@ -114,19 +117,60 @@ class DahuaVtoAccessory {
     this._setupLock();
     this._wireEvents();
 
-    // Defer CGI until after HAP has published (avoids racing child-bridge bring-up)
+    // Defer CGI until after HAP has published
     setTimeout(() => {
-      try {
-        this.dahua.startEventStream();
-      } catch (err) {
-        this.log.error(`Event stream start failed: ${err.message}`);
-      }
+      this._refreshDeviceInfo()
+        .catch((err) => this.log.warn(`Device info: ${err.message}`))
+        .finally(() => {
+          try {
+            this.dahua.startEventStream();
+          } catch (err) {
+            this.log.error(`Event stream start failed: ${err.message}`);
+          }
+        });
     }, 1500);
 
     this.log.info(
       `Ready @ ${this.config.dahua.host} ` +
         `(model=${this.config.model}, twoWay=${this.config.twoWayAudio}, ` +
         `hksv=${this.config.hksv.enabled}, debug=${this.config.debug})`
+    );
+  }
+
+  async _refreshDeviceInfo() {
+    const info = await this.dahua.getDeviceInfo();
+    const { Characteristic } = this.hap;
+    const svc = this.infoService;
+    if (!svc || !info) {
+      return;
+    }
+
+    if (!this.config.manufacturerOverride && info.manufacturer) {
+      svc.setCharacteristic(Characteristic.Manufacturer, info.manufacturer);
+      this.config.manufacturer = info.manufacturer;
+    }
+    if (!this.config.modelOverride && info.model) {
+      svc.setCharacteristic(Characteristic.Model, info.model);
+      this.config.model = info.model;
+    }
+    if (info.serialNumber && info.serialNumber.length >= 2) {
+      svc.setCharacteristic(Characteristic.SerialNumber, info.serialNumber);
+    }
+    if (info.hardwareRevision) {
+      try {
+        svc.setCharacteristic(Characteristic.HardwareRevision, info.hardwareRevision);
+      } catch {
+        /* older HAP without HardwareRevision */
+      }
+    }
+    if (!this.config.firmwareOverride && info.firmware) {
+      svc.setCharacteristic(Characteristic.FirmwareRevision, info.firmware);
+      this.config.firmware = info.firmware;
+    }
+
+    this.log.info(
+      `Device identity from VTO: model=${info.model || "?"} ` +
+        `serial=${info.serialNumber || "?"} firmware=${info.firmware || "?"}`
     );
   }
 

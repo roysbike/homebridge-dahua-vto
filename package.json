@@ -1,7 +1,7 @@
 {
   "name": "homebridge-dahua-vto",
   "displayName": "Homebridge Dahua VTO",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Homebridge plugin for Dahua VTO door stations — camera, lock, doorbell, two-way audio and optional HKSV",
   "main": "index.js",
   "scripts": {

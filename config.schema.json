@@ -123,7 +123,7 @@
               "title": "Model",
               "type": "string",
               "default": "VTO",
-              "description": "Shown in Home. Example: DHI-VTO2211G-WP"
+              "description": "Optional override. Leave default to auto-fill from VTO (magicBox getSystemInfo), e.g. VTO2111D-P-S2."
             }
           }
         }

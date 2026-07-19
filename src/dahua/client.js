@@ -109,6 +109,54 @@ class DahuaClient extends EventEmitter {
     return res.body;
   }
 
+  /**
+   * Real device identity from magicBox.cgi (getSystemInfo + getSoftwareVersion).
+   * Example getSystemInfo:
+   *   deviceType=VTO2111D-P-S2
+   *   serialNumber=7E02BF7PAJD7071
+   *   hardwareVersion=1.00
+   */
+  async getDeviceInfo() {
+    const sys = await this._magicBox("getSystemInfo");
+    let soft = {};
+    try {
+      soft = await this._magicBox("getSoftwareVersion");
+    } catch (err) {
+      this.log.debug(`getSoftwareVersion: ${err.message}`);
+    }
+
+    const model = sys.deviceType || sys.updateSerial || "";
+    const serialNumber = sys.serialNumber || "";
+    const hardwareRevision = sys.hardwareVersion || "";
+    const firmware =
+      soft.version || soft.Version || soft.softwareVersion || hardwareRevision || "";
+
+    const info = {
+      manufacturer: "Dahua",
+      model: String(model).trim(),
+      serialNumber: String(serialNumber).trim(),
+      hardwareRevision: String(hardwareRevision).trim(),
+      firmware: normalizeFirmware(firmware),
+      raw: { ...sys, ...soft },
+    };
+    this.log.debug(`Device info: ${JSON.stringify(info.raw)}`);
+    return info;
+  }
+
+  async _magicBox(action) {
+    const url = `${this.config.baseUrl}magicBox.cgi?action=${encodeURIComponent(action)}`;
+    const res = await digestRequest(url, {
+      username: this.config.username,
+      password: this.config.password,
+      timeoutMs: 8000,
+    });
+    const body = String(res.body || "");
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw new Error(`magicBox ${action}: HTTP ${res.statusCode} ${body.slice(0, 120)}`);
+    }
+    return parseDahuaKeyValues(body);
+  }
+
   startEventStream() {
     this._stopped = false;
     this._connectEvents();
@@ -329,4 +377,39 @@ function buildDigestAuth({ challenge, method, url, username, password }) {
 
 module.exports = {
   DahuaClient,
+  parseDahuaKeyValues,
+  normalizeFirmware,
 };
+
+function parseDahuaKeyValues(body) {
+  const out = {};
+  for (const line of String(body).split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("--")) {
+      continue;
+    }
+    const idx = trimmed.indexOf("=");
+    if (idx <= 0) {
+      continue;
+    }
+    out[trimmed.slice(0, idx).trim()] = trimmed.slice(idx + 1).trim();
+  }
+  return out;
+}
+
+/** HomeKit FirmwareRevision prefers x.y.z — normalize Dahua strings when possible. */
+function normalizeFirmware(raw) {
+  const s = String(raw || "").trim();
+  if (!s) {
+    return "1.0.0";
+  }
+  // Already looks like a.b.c...
+  if (/^\d+(\.\d+){1,3}/.test(s)) {
+    const parts = s.split(/[^0-9]+/).filter(Boolean).slice(0, 3);
+    while (parts.length < 3) {
+      parts.push("0");
+    }
+    return parts.join(".");
+  }
+  return s.slice(0, 64) || "1.0.0";
+}

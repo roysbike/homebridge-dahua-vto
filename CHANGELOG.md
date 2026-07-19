@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.5] — 2026-07-20
+
+- Auto-fill HomeKit Accessory Information from VTO `magicBox.cgi` (`getSystemInfo` / `getSoftwareVersion`): model, serial, hardware, firmware
+
+---
+
 ## [1.0.4] — 2026-07-20
 
 - Move `homebridge` to `devDependencies` only (Verified check)
