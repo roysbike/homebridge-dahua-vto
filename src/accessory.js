@@ -13,7 +13,8 @@ function normalizeDeviceConfig(raw) {
   const unlockSeconds = Number(raw.unlockSeconds || 5) || 5;
   const ffmpegPath = raw.ffmpegPath || raw.videoProcessor || "ffmpeg";
   const twoWayAudio = raw.twoWayAudio !== false;
-  const hksv = raw.hksv !== false;
+  // HKSV off by default — enable explicitly once live view/talkback are stable
+  const hksv = raw.hksv === true;
 
   const rtspUrl =
     raw.rtspUrl ||
@@ -86,11 +87,38 @@ class DahuaVtoAccessory {
 
     this.controller = buildDoorbellController(this.delegate, this.config);
     this.delegate.controller = this.controller;
-    accessory.configureController(this.controller);
+
+    // Always attach a fresh controller for this process. Avoid unconditional
+    // removeController — that restarts Homebridge 2.x child bridges in a loop.
+    try {
+      accessory.configureController(this.controller);
+    } catch (err) {
+      this.log.warn(`configureController: ${err.message} — replacing existing`);
+      try {
+        for (const c of [...(accessory.controllers || [])]) {
+          try {
+            accessory.removeController(c);
+          } catch {
+            /* ignore */
+          }
+        }
+        accessory.configureController(this.controller);
+      } catch (err2) {
+        this.log.error(`configureController failed: ${err2.message}`);
+      }
+    }
 
     this._setupLock();
     this._wireEvents();
-    this.dahua.startEventStream();
+
+    // Defer CGI until after HAP has published (avoids racing child-bridge bring-up)
+    setTimeout(() => {
+      try {
+        this.dahua.startEventStream();
+      } catch (err) {
+        this.log.error(`Event stream start failed: ${err.message}`);
+      }
+    }, 1500);
 
     this.log.info(
       `Ready ${this.config.name} @ ${this.config.dahua.host} ` +

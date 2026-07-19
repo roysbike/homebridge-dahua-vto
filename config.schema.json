@@ -2,6 +2,7 @@
   "pluginAlias": "DahuaVTO",
   "pluginType": "platform",
   "singular": true,
+  "headerDisplay": "⚠️ Do **not** enable Child Bridge for this plugin (Homebridge 2.x kills camera child bridges with SIGTERM). Leave Child Bridge OFF.",
   "schema": {
     "type": "object",
     "properties": {
@@ -87,8 +88,13 @@
             "hksv": {
               "title": "HomeKit Secure Video",
               "type": "boolean",
-              "default": true,
-              "description": "Requires HomePod / Apple TV hub and iCloud+."
+              "default": false,
+              "description": "Optional. Enable after live view and talkback work. Requires HomePod/Apple TV + iCloud+."
+            },
+            "accessoryId": {
+              "title": "Stable accessory ID",
+              "type": "string",
+              "description": "Optional. Fixed ID for HomeKit UUID (default: name). Do not change after pairing."
             },
             "motionTimeoutMs": {
               "title": "Motion clear timeout (ms)",

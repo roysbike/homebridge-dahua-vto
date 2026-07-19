@@ -1,29 +1,30 @@
 # homebridge-dahua-vto
 
-Homebridge plugin for **Dahua VTO** door stations (tested with VTO2111D):
+Homebridge plugin for **Dahua VTO** door stations (tested with **VTO2111D**):
 
 - Live camera (H.264 via ffmpeg)
 - Doorbell button events
 - Motion
 - Door lock / unlock (`accessControl.cgi`)
-- **Two-way audio** — same path as Scrypted Amcrest (`audio.cgi` G.711A, 1024-byte chunks @ 8 kHz)
+- **Two-way audio** — Scrypted Amcrest path (`audio.cgi` G.711A, 1024-byte chunks @ 8 kHz)
 - Optional **HomeKit Secure Video** (HKSV)
 
 ## Requirements
 
-- [Homebridge](https://homebridge.io/) `^1.8` (or v2 beta)
+- [Homebridge](https://homebridge.io/) `^1.8` / `^2`
+- Node.js `18` / `20` / `22` / `24`
 - **ffmpeg with `libfdk_aac`** for talkback (AAC-ELD). Recommended: [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge)
-- Network access from the Homebridge host to the VTO (HTTP CGI + RTSP)
+- LAN access to the VTO (HTTP CGI + RTSP)
+- **Child Bridge: OFF** — camera/doorbell controllers are unstable in Homebridge 2.x child bridges. Run this platform in the **main** bridge.
 
 ## Install
 
 ```bash
-hb-service add homebridge-dahua-vto
-# or
 npm install -g homebridge-dahua-vto
+# or in Homebridge UI: Plugins → search "dahua-vto" → Install
 ```
 
-Then restart Homebridge and add the platform in the UI, or edit `config.json`.
+Restart Homebridge, then add the platform in the UI or `config.json`.
 
 ## Config example
 
@@ -42,7 +43,7 @@ Then restart Homebridge and add the platform in the UI, or edit `config.json`.
           "doorChannel": 1,
           "unlockSeconds": 5,
           "twoWayAudio": true,
-          "hksv": true,
+          "hksv": false,
           "ffmpegPath": "/usr/local/bin/ffmpeg"
         }
       ]
@@ -51,6 +52,8 @@ Then restart Homebridge and add the platform in the UI, or edit `config.json`.
 }
 ```
 
+Do **not** add a `_bridge` / Child Bridge block for this platform.
+
 ### Optional fields
 
 | Field | Default | Notes |
@@ -58,21 +61,22 @@ Then restart Homebridge and add the platform in the UI, or edit `config.json`.
 | `rtspUrl` | auto | Full RTSP URL override |
 | `rtspSubtype` | `0` | Main/sub stream if `rtspUrl` not set |
 | `ssl` | `false` | HTTPS for CGI |
-| `ffmpegPath` | `ffmpeg` | Path to ffmpeg-for-homebridge binary |
+| `ffmpegPath` | `ffmpeg` | Path to ffmpeg-for-homebridge |
 | `twoWayAudio` | `true` | Mic in Home → VTO speaker |
-| `hksv` | `true` | Secure Video recording |
+| `hksv` | `false` | Enable after live view/talkback work |
+| `accessoryId` | `name` | Stable HomeKit UUID seed — do not change after pairing |
 | `motionTimeoutMs` | `10000` | Auto-clear motion |
 
 ## Two-way audio
 
-Uses the Dahua/Amcrest CGI (same as Scrypted **Doorbell Type = Dahua**):
+Same CGI as Scrypted (**Doorbell Type = Dahua**):
 
 ```text
 POST /cgi-bin/audio.cgi?action=postAudio&httptype=singlepart&channel=1
 Content-Type: Audio/G.711A
 ```
 
-In the Home app: open the camera → hold the microphone button.
+Home app → open camera → hold the microphone.
 
 ## Unlock
 
@@ -80,12 +84,26 @@ In the Home app: open the camera → hold the microphone button.
 GET /cgi-bin/accessControl.cgi?action=openDoor&channel=1&UserID=101&Type=Remote
 ```
 
-## Notes for publishing
+## Troubleshooting
 
-1. Replace `roysbike` in `package.json` `repository` / `bugs` / `homepage`
-2. Set `"author"`
-3. `npm login` && `npm publish`
-4. Optional: request [Homebridge verified](https://github.com/homebridge/plugins) listing after the plugin is stable
+| Symptom | Fix |
+|---|---|
+| Child bridge `SIGTERM` loop | Disable Child Bridge; run in main bridge |
+| `ECONNREFUSED` on event stream | `host` must be the **VTO IP**, not the Homebridge host |
+| No talkback / garbled audio | Use ffmpeg-for-homebridge (`libfdk_aac`); keep `twoWayAudio: true` |
+| Duplicate accessories after rename | Set fixed `accessoryId`; remove stale accessories in UI |
+
+## Versioning
+
+| Channel | Install |
+|---|---|
+| Stable | `homebridge-dahua-vto` / `@latest` |
+| Beta | `homebridge-dahua-vto@beta` |
+
+```bash
+OTP=XXXXXX ./publish.sh stable   # latest
+OTP=XXXXXX ./publish.sh beta     # pre-release
+```
 
 ## License
 
