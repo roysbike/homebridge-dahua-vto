@@ -1,4 +1,4 @@
-# homebridge-dahua-vto v1.0.2
+# homebridge-dahua-vto v1.0.3
 
 Homebridge plugin for **Dahua VTO** door stations (Amcrest-compatible CGI).
 
@@ -25,7 +25,6 @@ Homebridge plugin for **Dahua VTO** door stations (Amcrest-compatible CGI).
 - Homebridge `^1.8` / `^2`
 - Node.js 20 / 22 / 24
 - [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) (`libfdk_aac`) for talkback
-- **Child Bridge OFF** (run in the main bridge)
 
 ## Install
 
@@ -58,11 +57,8 @@ or `npm install -g homebridge-dahua-vto`
 
 Set `"debug": true` when testing another model, then attach `[DEBUG]` logs to a [GitHub issue](https://github.com/roysbike/homebridge-dahua-vto/issues).
 
-## Changes in 1.0.2
+## Changes in 1.0.3
 
-- Verified-oriented cleanup (no publish scripts in package)
-- Debug option + unhandled CGI event logging
-- Model documentation (DHI-VTO2211G-WP / VTO1201G+)
-- Safer event parsing
+- Removed Child Bridge warnings (works stably in practice)
 
 Full changelog: see `CHANGELOG.md`.

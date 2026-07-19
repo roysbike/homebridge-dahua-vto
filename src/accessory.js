@@ -92,8 +92,7 @@ class DahuaVtoAccessory {
     this.controller = buildDoorbellController(this.delegate, this.config);
     this.delegate.controller = this.controller;
 
-    // Always attach a fresh controller for this process. Avoid unconditional
-    // removeController — that restarts Homebridge 2.x child bridges in a loop.
+    // Always attach a fresh controller for this process.
     try {
       accessory.configureController(this.controller);
     } catch (err) {

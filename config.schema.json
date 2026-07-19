@@ -2,7 +2,7 @@
   "pluginAlias": "DahuaVTO",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "Dahua / Amcrest-compatible VTO door stations (CGI). **Tested:** DHI-VTO2211G-WP. **Expected:** VTO1201G and similar models with the same CGI API.\n\n⚠️ Do **not** enable Child Bridge (Homebridge 2.x). Leave Child Bridge OFF.\n\nEnable **Debug** when testing another model, then open a [GitHub issue](https://github.com/roysbike/homebridge-dahua-vto/issues) with the logs.",
+  "headerDisplay": "Dahua / Amcrest-compatible VTO door stations (CGI). **Tested:** DHI-VTO2211G-WP. **Expected:** VTO1201G and similar models with the same CGI API.\n\nEnable **Debug** when testing another model, then open a [GitHub issue](https://github.com/roysbike/homebridge-dahua-vto/issues) with the logs.",
   "footerDisplay": "Issues & model reports: https://github.com/roysbike/homebridge-dahua-vto/issues",
   "schema": {
     "type": "object",

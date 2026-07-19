@@ -6,7 +6,7 @@ const { createLogger } = require("./util/logger");
 
 /**
  * Stable id for UUID — must NOT change when host IP changes
- * (host-based UUIDs caused add+unregister → child bridge SIGTERM loop).
+ * (host-based UUIDs would recreate the accessory after an IP change).
  */
 function deviceId(cfg) {
   return String(cfg.accessoryId || cfg.name || cfg.host || "default")
@@ -38,18 +38,6 @@ class DahuaVtoPlatform {
       `homebridge-dahua-vto ${require("../package.json").version} loading` +
         (this.debug ? " (debug on)" : "")
     );
-
-    // Camera + DoorbellController in a Homebridge child bridge is unstable on HB 2.x
-    // (instant SIGTERM before the bridge finishes starting). Run in the main bridge.
-    if (config._bridge) {
-      this.logger.error("══════════════════════════════════════════════════════");
-      this.logger.error(" Child Bridge is ENABLED for Dahua VTO — not supported.");
-      this.logger.error(" Homebridge keeps sending SIGTERM and the bridge never stays up.");
-      this.logger.error(" Fix: Homebridge UI → Dahua VTO → turn OFF \"Child Bridge\"");
-      this.logger.error("   or remove the \"_bridge\" block from this platform in config.json");
-      this.logger.error(" Then restart Homebridge.");
-      this.logger.error("══════════════════════════════════════════════════════");
-    }
 
     if (this.debug) {
       this.logger.info(
@@ -151,14 +139,13 @@ class DahuaVtoPlatform {
       }
     }
 
-    // Do NOT unregister stale accessories at startup — on child bridges this
-    // triggers an immediate SIGTERM/restart loop (seen on Homebridge 2.x).
+    // Do not auto-unregister stale accessories at startup (safer for cached restores).
     const stale = this.accessories.filter((a) => !keep.has(a.UUID));
     if (stale.length) {
       this.logger.warn(
         `${stale.length} cached accessory(ies) no longer in config. ` +
           `Remove them manually in Homebridge UI (Settings → Remove Single Cached Accessory) ` +
-          `to avoid duplicates. Auto-remove disabled to prevent child-bridge restart loops.`
+          `to avoid duplicates.`
       );
     }
   }

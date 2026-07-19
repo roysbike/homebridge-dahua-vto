@@ -25,7 +25,6 @@ Built as a [dynamic platform](https://developers.homebridge.io/#/#dynamic-platfo
 - Node.js **20** / **22** / **24** (LTS: 22 & 24 for verification)
 - **ffmpeg with `libfdk_aac`** for talkback — recommended: [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge)
 - LAN access to the VTO (HTTP CGI + RTSP)
-- **Child Bridge: OFF** — run this platform in the **main** bridge (HB 2.x child bridges + camera/doorbell are unstable)
 
 ## Install
 
@@ -65,8 +64,6 @@ Restart Homebridge, then configure the platform in the UI (or `config.json`). Th
 }
 ```
 
-Do **not** add a `_bridge` / Child Bridge block for this platform.
-
 ### Options
 
 | Field | Default | Notes |
@@ -103,7 +100,6 @@ CGI API is shared across many Dahua / Amcrest door stations.
 
 | Symptom | Fix |
 |---|---|
-| Child bridge `SIGTERM` loop | Disable Child Bridge; run in main bridge |
 | `ECONNREFUSED` on event stream | `host` must be the **VTO IP**, not the Homebridge host |
 | No talkback / garbled audio | Use ffmpeg-for-homebridge (`libfdk_aac`); keep `twoWayAudio: true` |
 | No doorbell on another model | Enable `debug`, ring button, file an issue with CGI event codes |

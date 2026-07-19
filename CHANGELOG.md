@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.3] — 2026-07-20
+
+- Removed Child Bridge warnings from docs, schema, and runtime logs (works fine in practice)
+
+---
+
 ## [1.0.2] — 2026-07-20
 
 Aligned with [Verified By Homebridge](https://github.com/homebridge/verified) expectations and cleaned the published package.
@@ -17,7 +23,6 @@ Aligned with [Verified By Homebridge](https://github.com/homebridge/verified) ex
 ### Notes
 - Still no analytics or post-install system changes
 - Plugin remains idle until a door station is configured
-- Child Bridge remains unsupported on Homebridge 2.x
 
 ---
 
