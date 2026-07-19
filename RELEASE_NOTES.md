@@ -1,4 +1,4 @@
-# homebridge-dahua-vto v1.0.3
+# homebridge-dahua-vto v1.0.4
 
 Homebridge plugin for **Dahua VTO** door stations (Amcrest-compatible CGI).
 
@@ -57,8 +57,8 @@ or `npm install -g homebridge-dahua-vto`
 
 Set `"debug": true` when testing another model, then attach `[DEBUG]` logs to a [GitHub issue](https://github.com/roysbike/homebridge-dahua-vto/issues).
 
-## Changes in 1.0.3
+## Changes in 1.0.4
 
-- Removed Child Bridge warnings (works stably in practice)
+- `homebridge` only in `devDependencies` (Verified requirement)
 
 Full changelog: see `CHANGELOG.md`.

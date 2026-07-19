@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.4] — 2026-07-20
+
+- Move `homebridge` to `devDependencies` only (Verified check)
+
+---
+
 ## [1.0.3] — 2026-07-20
 
 - Removed Child Bridge warnings from docs, schema, and runtime logs (works fine in practice)
