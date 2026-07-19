@@ -1,89 +1,68 @@
-# homebridge-dahua-vto v1.0.1
+# homebridge-dahua-vto v1.0.2
 
-First **stable** release — Dahua VTO door stations in Apple Home via Homebridge.
+Homebridge plugin for **Dahua VTO** door stations (Amcrest-compatible CGI).
 
-Tested with **Dahua VTO2111D** · Homebridge **2.1** · HAP **2.1**
+## Supported models
 
----
+| Model | Status |
+|---|---|
+| **DHI-VTO2211G-WP** | Tested |
+| **VTO1201G** and similar | Expected (same CGI API) |
+| Other Dahua / Amcrest VTOs | Likely — enable **Debug** and open an issue with logs |
 
-## What it does
+## Features
 
-| Feature | Details |
-|--------|---------|
-| 📷 **Live camera** | H.264 stream to Home via ffmpeg |
-| 🔔 **Doorbell** | Button press → HomeKit notification (`ringDoorbell`) |
-| 🏃 **Motion** | From Dahua event stream (`VideoMotion`) |
-| 🔓 **Door unlock** | Lock tile → `accessControl.cgi` openDoor |
-| 🎙️ **Two-way audio** | Same path as Scrypted Amcrest / Dahua (`audio.cgi` G.711A) |
-| 🎥 **HKSV** | Optional HomeKit Secure Video (off by default) |
+- Live camera (H.264 via ffmpeg)
+- Doorbell notifications + motion
+- Door unlock (`accessControl.cgi`)
+- Two-way audio (`audio.cgi` G.711A)
+- Optional HKSV (off by default)
+- Homebridge UI settings schema
+- **Debug logging** for model compatibility reports
 
----
+## Requirements
+
+- Homebridge `^1.8` / `^2`
+- Node.js 20 / 22 / 24
+- [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) (`libfdk_aac`) for talkback
+- **Child Bridge OFF** (run in the main bridge)
 
 ## Install
 
-```bash
-npm install -g homebridge-dahua-vto
+```text
+Homebridge UI → Plugins → homebridge-dahua-vto → Install
 ```
 
-Or Homebridge UI → Plugins → search **Dahua VTO** → Install → Restart.
+or `npm install -g homebridge-dahua-vto`
 
-### Config example
+## Config
 
 ```json
 {
   "platform": "DahuaVTO",
   "name": "Dahua VTO",
+  "debug": false,
   "cameras": [
     {
       "name": "Front Door",
-      "host": "192.168.80.8",
+      "host": "192.168.1.30",
       "username": "admin",
       "password": "YOUR_PASSWORD",
+      "model": "DHI-VTO2211G-WP",
       "twoWayAudio": true,
-      "hksv": false,
-      "ffmpegPath": "/usr/local/bin/ffmpeg"
+      "hksv": false
     }
   ]
 }
 ```
 
----
+Set `"debug": true` when testing another model, then attach `[DEBUG]` logs to a [GitHub issue](https://github.com/roysbike/homebridge-dahua-vto/issues).
 
-## Requirements
+## Changes in 1.0.2
 
-- Homebridge `^1.8` / `^2`
-- Node.js 18 / 20 / 22 / 24
-- **[ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge)** (`libfdk_aac` for AAC-ELD talkback)
-- VTO reachable on LAN (HTTP CGI + RTSP)
+- Verified-oriented cleanup (no publish scripts in package)
+- Debug option + unhandled CGI event logging
+- Model documentation (DHI-VTO2211G-WP / VTO1201G+)
+- Safer event parsing
 
-### Important
-
-- **Child Bridge must be OFF** — on Homebridge 2.x, camera/doorbell plugins in a child bridge often die with `SIGTERM`. Run in the **main** bridge.
-- `host` = **VTO IP**, not the Homebridge host.
-- Doorbell notifications need a HomeKit hub (HomePod / Apple TV) and notifications enabled in the Home app.
-
----
-
-## How doorbell / unlock / talkback work
-
-- **Events:** `eventManager.cgi?action=attach&codes=[All]` — same as Scrypted Amcrest  
-- **Ring:** Dahua codes like `CallNoAnswered`, `_CallNoAnswer_`, `_DoTalkAction_` → `ringDoorbell()`  
-- **Unlock:** `accessControl.cgi?action=openDoor&channel=1&UserID=101&Type=Remote`  
-- **Talkback:** Home mic → AAC-ELD → G.711A → `POST audio.cgi?action=postAudio&httptype=singlepart` (1024-byte chunks @ ≤ 8 kB/s)
-
----
-
-## Changelog since betas
-
-- Digest auth for `audio.cgi` fixed (no hanging empty POST)
-- Talkback aligned with Scrypted Amcrest quality/timing
-- Stable accessory UUID (`name` / `accessoryId`)
-- No auto-unregister at startup (was restarting child bridges)
-- Explicit Child Bridge warning
-
-Full history: [CHANGELOG.md](https://github.com/roysbike/homebridge-dahua-vto/blob/main/CHANGELOG.md)
-
----
-
-**npm:** https://www.npmjs.com/package/homebridge-dahua-vto  
-**Repo:** https://github.com/roysbike/homebridge-dahua-vto
+Full changelog: see `CHANGELOG.md`.

@@ -1,18 +1,11 @@
 {
   "name": "homebridge-dahua-vto",
   "displayName": "Dahua VTO",
-  "version": "1.0.1",
-  "description": "Homebridge plugin for Dahua VTO door stations — camera, lock, doorbell, two-way audio (Amcrest audio.cgi) and optional HKSV",
+  "version": "1.0.2",
+  "description": "Homebridge plugin for Dahua VTO door stations — camera, lock, doorbell, two-way audio and optional HKSV",
   "main": "index.js",
   "scripts": {
-    "test": "node -e \"require('./index.js');\"",
-    "version:rc": "npm version prerelease --preid=rc",
-    "version:beta": "npm version prerelease --preid=beta",
-    "version:patch": "npm version patch",
-    "version:minor": "npm version minor",
-    "publish:rc": "npm publish --access public --tag rc",
-    "publish:beta": "npm publish --access public --tag beta",
-    "publish:stable": "npm publish --access public --tag latest"
+    "test": "node -e \"require('./index.js'); console.log('ok');\""
   },
   "keywords": [
     "homebridge-plugin",
@@ -23,10 +16,11 @@
     "camera",
     "intercom",
     "two-way-audio",
-    "hksv"
+    "hksv",
+    "amcrest"
   ],
   "engines": {
-    "node": "^18.20.4 || ^20.16.0 || ^22.5.1 || ^24.0.0",
+    "node": "^20.19.0 || ^22.5.1 || ^24.0.0",
     "homebridge": "^1.8.0 || ^2.0.0"
   },
   "dependencies": {

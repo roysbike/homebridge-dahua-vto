@@ -1,30 +1,41 @@
 # homebridge-dahua-vto
 
-Homebridge plugin for **Dahua VTO** door stations (tested with **VTO2111D**):
+Homebridge plugin for **Dahua VTO** door stations (Amcrest-compatible CGI).
+
+| | |
+|---|---|
+| **Tested** | [DHI-VTO2211G-WP](https://www.dahuasecurity.com/) |
+| **Expected** | VTO1201G and similar models with the same HTTP CGI / RTSP API |
+
+Built as a [dynamic platform](https://developers.homebridge.io/#/#dynamic-platform-template) with Homebridge UI settings (`config.schema.json`), aimed at [Verified By Homebridge](https://github.com/homebridge/verified) requirements.
+
+## Features
 
 - Live camera (H.264 via ffmpeg)
-- Doorbell button events
-- Motion
+- Doorbell button notifications
+- Motion sensor
 - Door lock / unlock (`accessControl.cgi`)
-- **Two-way audio** — Scrypted Amcrest path (`audio.cgi` G.711A, 1024-byte chunks @ 8 kHz)
-- Optional **HomeKit Secure Video** (HKSV)
+- Two-way audio (`audio.cgi` G.711A, Scrypted Amcrest-style)
+- Optional HomeKit Secure Video (HKSV, off by default)
+- **Debug logging** for testing other models and filing issues
 
 ## Requirements
 
 - [Homebridge](https://homebridge.io/) `^1.8` / `^2`
-- Node.js `18` / `20` / `22` / `24`
-- **ffmpeg with `libfdk_aac`** for talkback (AAC-ELD). Recommended: [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge)
+- Node.js **20** / **22** / **24** (LTS: 22 & 24 for verification)
+- **ffmpeg with `libfdk_aac`** for talkback — recommended: [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge)
 - LAN access to the VTO (HTTP CGI + RTSP)
-- **Child Bridge: OFF** — camera/doorbell controllers are unstable in Homebridge 2.x child bridges. Run this platform in the **main** bridge.
+- **Child Bridge: OFF** — run this platform in the **main** bridge (HB 2.x child bridges + camera/doorbell are unstable)
 
 ## Install
 
+Homebridge UI → **Plugins** → search `dahua-vto` → **Install**, or:
+
 ```bash
 npm install -g homebridge-dahua-vto
-# or in Homebridge UI: Plugins → search "dahua-vto" → Install
 ```
 
-Restart Homebridge, then add the platform in the UI or `config.json`.
+Restart Homebridge, then configure the platform in the UI (or `config.json`). The plugin stays idle until a door station is configured.
 
 ## Config example
 
@@ -34,12 +45,14 @@ Restart Homebridge, then add the platform in the UI or `config.json`.
     {
       "platform": "DahuaVTO",
       "name": "Dahua VTO",
+      "debug": false,
       "cameras": [
         {
           "name": "Front Door",
-          "host": "192.168.80.8",
+          "host": "192.168.1.30",
           "username": "admin",
           "password": "YOUR_PASSWORD",
+          "model": "DHI-VTO2211G-WP",
           "doorChannel": 1,
           "unlockSeconds": 5,
           "twoWayAudio": true,
@@ -54,10 +67,11 @@ Restart Homebridge, then add the platform in the UI or `config.json`.
 
 Do **not** add a `_bridge` / Child Bridge block for this platform.
 
-### Optional fields
+### Options
 
 | Field | Default | Notes |
 |---|---|---|
+| `debug` | `false` | Platform-wide verbose CGI/stream logs (also per-camera `debug`) |
 | `rtspUrl` | auto | Full RTSP URL override |
 | `rtspSubtype` | `0` | Main/sub stream if `rtspUrl` not set |
 | `ssl` | `false` | HTTPS for CGI |
@@ -66,23 +80,24 @@ Do **not** add a `_bridge` / Child Bridge block for this platform.
 | `hksv` | `false` | Enable after live view/talkback work |
 | `accessoryId` | `name` | Stable HomeKit UUID seed — do not change after pairing |
 | `motionTimeoutMs` | `10000` | Auto-clear motion |
+| `model` | `VTO` | Shown in Home app |
 
-## Two-way audio
+## Supported models
 
-Same CGI as Scrypted (**Doorbell Type = Dahua**):
+CGI API is shared across many Dahua / Amcrest door stations.
 
-```text
-POST /cgi-bin/audio.cgi?action=postAudio&httptype=singlepart&channel=1
-Content-Type: Audio/G.711A
-```
+| Model | Status |
+|---|---|
+| **DHI-VTO2211G-WP** | Tested |
+| **VTO1201G** and similar | Expected to work (same CGI) |
+| Other VTO / Amcrest intercoms | Likely — enable **Debug** and [open an issue](https://github.com/roysbike/homebridge-dahua-vto/issues) if something fails |
 
-Home app → open camera → hold the microphone.
+### Testing another model
 
-## Unlock
-
-```text
-GET /cgi-bin/accessControl.cgi?action=openDoor&channel=1&UserID=101&Type=Remote
-```
+1. Set `"debug": true` on the platform (or on the camera entry).
+2. Restart Homebridge, ring the button, open live view, try unlock / talkback.
+3. Copy the Homebridge log lines tagged `[DEBUG]` (especially `Unhandled CGI event` / `Event …`).
+4. Open a [GitHub issue](https://github.com/roysbike/homebridge-dahua-vto/issues) with: **model name**, firmware if known, and the debug log.
 
 ## Troubleshooting
 
@@ -91,19 +106,8 @@ GET /cgi-bin/accessControl.cgi?action=openDoor&channel=1&UserID=101&Type=Remote
 | Child bridge `SIGTERM` loop | Disable Child Bridge; run in main bridge |
 | `ECONNREFUSED` on event stream | `host` must be the **VTO IP**, not the Homebridge host |
 | No talkback / garbled audio | Use ffmpeg-for-homebridge (`libfdk_aac`); keep `twoWayAudio: true` |
+| No doorbell on another model | Enable `debug`, ring button, file an issue with CGI event codes |
 | Duplicate accessories after rename | Set fixed `accessoryId`; remove stale accessories in UI |
-
-## Versioning
-
-| Channel | Install |
-|---|---|
-| Stable | `homebridge-dahua-vto` / `@latest` |
-| Beta | `homebridge-dahua-vto@beta` |
-
-```bash
-OTP=XXXXXX ./publish.sh stable   # latest
-OTP=XXXXXX ./publish.sh beta     # pre-release
-```
 
 ## License
 

@@ -202,6 +202,14 @@ class DahuaClient extends EventEmitter {
   }
 
   _handleEventChunk(raw) {
+    try {
+      this._parseEventChunk(raw);
+    } catch (err) {
+      this.log.warn(`Event parse error: ${err.message}`);
+    }
+  }
+
+  _parseEventChunk(raw) {
     const text = raw.trim();
     if (!text || text.startsWith("--") || text.startsWith("HTTP/")) {
       return;
@@ -210,6 +218,9 @@ class DahuaClient extends EventEmitter {
     const codeMatch = text.match(/Code=([^;]+)/i);
     const actionMatch = text.match(/action=([^;]+)/i);
     if (!codeMatch) {
+      if (this.config.debug) {
+        this.log.debug(`Event chunk without Code=: ${text.slice(0, 200)}`);
+      }
       return;
     }
 
@@ -226,10 +237,11 @@ class DahuaClient extends EventEmitter {
     }
 
     const event = { Code: code, Action: action, Data: data, raw: text };
-    this.log.debug(`Event ${code}/${action}`);
+    this.log.debug(`Event ${code}/${action}` + (this.config.debug ? ` raw=${text}` : ""));
     this.emit("event", event);
 
     // Scrypted AmcrestEvent mappings for Dahua doorbell
+    let handled = true;
     if (code === "VideoMotion" && action === "Start") {
       this.emit("motion", true, event);
     } else if (code === "VideoMotion" && action === "Stop") {
@@ -245,9 +257,21 @@ class DahuaClient extends EventEmitter {
       const state = data?.State;
       if (state === 1 || state === 8 || state === "1" || state === "8") {
         this.emit("doorbell", event);
+      } else {
+        handled = false;
       }
     } else if (code === "AccessControl") {
       this.emit("accessControl", event);
+    } else {
+      handled = false;
+    }
+
+    // Help users testing other VTO models: surface unknown CGI codes when debug is on
+    if (!handled && this.config.debug) {
+      this.log.debug(
+        `Unhandled CGI event (please include in GitHub issue if ring/motion missing): ` +
+          `${code}/${action} data=${JSON.stringify(data)}`
+      );
     }
   }
 

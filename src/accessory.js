@@ -2,6 +2,7 @@
 
 const { DahuaClient } = require("./dahua/client");
 const { VtoCameraDelegate, buildDoorbellController } = require("./homekit/camera");
+const { createLogger } = require("./util/logger");
 
 function normalizeDeviceConfig(raw) {
   const host = raw.host;
@@ -15,6 +16,7 @@ function normalizeDeviceConfig(raw) {
   const twoWayAudio = raw.twoWayAudio !== false;
   // HKSV off by default — enable explicitly once live view/talkback are stable
   const hksv = raw.hksv === true;
+  const debug = Boolean(raw.debug);
 
   const rtspUrl =
     raw.rtspUrl ||
@@ -28,6 +30,7 @@ function normalizeDeviceConfig(raw) {
     ffmpegPath,
     rtspUrl,
     twoWayAudio,
+    debug,
     dahua: {
       host,
       username,
@@ -37,6 +40,7 @@ function normalizeDeviceConfig(raw) {
       doorChannel,
       unlockSeconds,
       eventCodes: raw.eventCodes || "All",
+      debug,
     },
     hksv: {
       enabled: hksv,
@@ -52,11 +56,11 @@ function normalizeDeviceConfig(raw) {
  */
 class DahuaVtoAccessory {
   constructor(log, deviceConfig, api, accessory) {
-    this.log = log;
     this.api = api;
     this.accessory = accessory;
     this.config = normalizeDeviceConfig(deviceConfig);
     this.hap = api.hap;
+    this.log = createLogger(log, this.config.debug, this.config.name);
 
     const { Service, Characteristic, Categories } = this.hap;
 
@@ -77,10 +81,10 @@ class DahuaVtoAccessory {
     this.targetState = Characteristic.LockTargetState.SECURED;
     this.currentState = Characteristic.LockCurrentState.SECURED;
 
-    this.dahua = new DahuaClient(this.config.dahua, this._logger());
+    this.dahua = new DahuaClient(this.config.dahua, this.log);
     this.delegate = new VtoCameraDelegate({
       config: this.config,
-      log: this._logger(),
+      log: this.log,
       dahua: this.dahua,
       getMotionActive: () => this.motionActive,
     });
@@ -121,18 +125,10 @@ class DahuaVtoAccessory {
     }, 1500);
 
     this.log.info(
-      `Ready ${this.config.name} @ ${this.config.dahua.host} ` +
-        `(twoWay=${this.config.twoWayAudio}, hksv=${this.config.hksv.enabled})`
+      `Ready @ ${this.config.dahua.host} ` +
+        `(model=${this.config.model}, twoWay=${this.config.twoWayAudio}, ` +
+        `hksv=${this.config.hksv.enabled}, debug=${this.config.debug})`
     );
-  }
-
-  _logger() {
-    return {
-      info: (...a) => this.log.info(...a),
-      warn: (...a) => this.log.warn(...a),
-      error: (...a) => this.log.error(...a),
-      debug: (...a) => this.log.debug(...a),
-    };
   }
 
   _setupLock() {

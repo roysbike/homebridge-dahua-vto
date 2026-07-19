@@ -2,7 +2,8 @@
   "pluginAlias": "DahuaVTO",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "⚠️ Do **not** enable Child Bridge for this plugin (Homebridge 2.x kills camera child bridges with SIGTERM). Leave Child Bridge OFF.",
+  "headerDisplay": "Dahua / Amcrest-compatible VTO door stations (CGI). **Tested:** DHI-VTO2211G-WP. **Expected:** VTO1201G and similar models with the same CGI API.\n\n⚠️ Do **not** enable Child Bridge (Homebridge 2.x). Leave Child Bridge OFF.\n\nEnable **Debug** when testing another model, then open a [GitHub issue](https://github.com/roysbike/homebridge-dahua-vto/issues) with the logs.",
+  "footerDisplay": "Issues & model reports: https://github.com/roysbike/homebridge-dahua-vto/issues",
   "schema": {
     "type": "object",
     "properties": {
@@ -11,6 +12,12 @@
         "type": "string",
         "default": "Dahua VTO",
         "description": "Internal platform name (Homebridge UI)."
+      },
+      "debug": {
+        "title": "Debug logging",
+        "type": "boolean",
+        "default": false,
+        "description": "Log CGI events, streams and talkback details. Use when testing other VTO models, then attach logs to a GitHub issue."
       },
       "cameras": {
         "title": "Door stations",
@@ -31,7 +38,7 @@
               "type": "string",
               "format": "hostname",
               "placeholder": "192.168.1.30",
-              "description": "VTO IP address or hostname."
+              "description": "VTO IP address or hostname (not the Homebridge host)."
             },
             "username": {
               "title": "Username",
@@ -83,13 +90,19 @@
               "title": "Two-way audio",
               "type": "boolean",
               "default": true,
-              "description": "Home mic → VTO speaker via audio.cgi (G.711A), Scrypted Amcrest style."
+              "description": "Home mic → VTO speaker via audio.cgi (G.711A)."
             },
             "hksv": {
               "title": "HomeKit Secure Video",
               "type": "boolean",
               "default": false,
               "description": "Optional. Enable after live view and talkback work. Requires HomePod/Apple TV + iCloud+."
+            },
+            "debug": {
+              "title": "Debug (this device)",
+              "type": "boolean",
+              "default": false,
+              "description": "Override platform debug for this door station only."
             },
             "accessoryId": {
               "title": "Stable accessory ID",
@@ -109,7 +122,8 @@
             "model": {
               "title": "Model",
               "type": "string",
-              "default": "VTO"
+              "default": "VTO",
+              "description": "Shown in Home. Example: DHI-VTO2211G-WP"
             }
           }
         }
