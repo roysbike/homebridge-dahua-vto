@@ -1,14 +1,17 @@
 # homebridge-dahua-vto v1.0.4
 
-Homebridge plugin for **Dahua VTO** door stations (Amcrest-compatible CGI).
+Homebridge plugin for **Dahua / Amcrest-compatible VTO** door stations.
 
-## Supported models
+## What's new
 
-| Model | Status |
-|---|---|
-| **DHI-VTO2211G-WP** | Tested |
-| **VTO1201G** and similar | Expected (same CGI API) |
-| Other Dahua / Amcrest VTOs | Likely — enable **Debug** and open an issue with logs |
+### 1.0.4
+- Verified fix: `homebridge` is only in `devDependencies` (not `peerDependencies`)
+
+### Also since 1.0.2
+- Display name: **Homebridge Dahua VTO**
+- Removed Child Bridge warnings (works stably with Child Bridge)
+- Platform / per-camera **`debug`** logging for other models + GitHub issues
+- Documented models: **DHI-VTO2211G-WP** (tested), **VTO1201G** and similar
 
 ## Features
 
@@ -17,8 +20,15 @@ Homebridge plugin for **Dahua VTO** door stations (Amcrest-compatible CGI).
 - Door unlock (`accessControl.cgi`)
 - Two-way audio (`audio.cgi` G.711A)
 - Optional HKSV (off by default)
-- Homebridge UI settings schema
-- **Debug logging** for model compatibility reports
+- Homebridge UI settings (`config.schema.json`)
+
+## Supported models
+
+| Model | Status |
+|---|---|
+| **DHI-VTO2211G-WP** | Tested |
+| **VTO1201G** and similar | Expected (same CGI API) |
+| Other Dahua / Amcrest VTOs | Enable **Debug** and [open an issue](https://github.com/roysbike/homebridge-dahua-vto/issues) with logs |
 
 ## Requirements
 
@@ -28,13 +38,11 @@ Homebridge plugin for **Dahua VTO** door stations (Amcrest-compatible CGI).
 
 ## Install
 
-```text
-Homebridge UI → Plugins → homebridge-dahua-vto → Install
-```
+Homebridge UI → Plugins → `homebridge-dahua-vto` → Install  
 
-or `npm install -g homebridge-dahua-vto`
+or: `npm install -g homebridge-dahua-vto`
 
-## Config
+## Config example
 
 ```json
 {
@@ -55,10 +63,4 @@ or `npm install -g homebridge-dahua-vto`
 }
 ```
 
-Set `"debug": true` when testing another model, then attach `[DEBUG]` logs to a [GitHub issue](https://github.com/roysbike/homebridge-dahua-vto/issues).
-
-## Changes in 1.0.4
-
-- `homebridge` only in `devDependencies` (Verified requirement)
-
-Full changelog: see `CHANGELOG.md`.
+Full changelog: [CHANGELOG.md](https://github.com/roysbike/homebridge-dahua-vto/blob/main/CHANGELOG.md)
