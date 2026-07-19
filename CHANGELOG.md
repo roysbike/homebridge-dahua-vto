@@ -3,6 +3,7 @@
 ## [1.0.3] — 2026-07-20
 
 - Removed Child Bridge warnings from docs, schema, and runtime logs (works fine in practice)
+- Display name: **Homebridge Dahua VTO**
 
 ---
 
