@@ -24,13 +24,15 @@ function normalizeDeviceConfig(raw) {
 
   return {
     name: raw.name || `Dahua VTO ${host}`,
-    manufacturer: raw.manufacturer || "Dahua",
-    model: raw.model || "VTO",
-    firmware: raw.firmware || "1.0.0",
-    // If user set these in config, keep them; otherwise refresh from magicBox.cgi
-    modelOverride: raw.model != null && String(raw.model).trim() !== "" && String(raw.model).trim() !== "VTO",
-    firmwareOverride: raw.firmware != null && String(raw.firmware).trim() !== "" && String(raw.firmware).trim() !== "1.0.0",
-    manufacturerOverride: raw.manufacturer != null && String(raw.manufacturer).trim() !== "" && String(raw.manufacturer).trim() !== "Dahua",
+    // HomeKit identity: filled from VTO magicBox unless explicit override below
+    manufacturer: String(raw.manufacturer || "").trim(),
+    model: String(raw.model || "").trim(),
+    firmware: String(raw.firmware || "").trim(),
+    serialNumber: String(raw.serialNumber || "").trim(),
+    manufacturerOverride: isIdentityOverride(raw.manufacturer, ["Dahua"]),
+    modelOverride: isIdentityOverride(raw.model, ["VTO", ""]),
+    firmwareOverride: isIdentityOverride(raw.firmware, ["1.0.0", ""]),
+    serialOverride: Boolean(String(raw.serialNumber || "").trim()),
     ffmpegPath,
     rtspUrl,
     twoWayAudio,
@@ -64,6 +66,15 @@ function normalizeDeviceConfig(raw) {
   };
 }
 
+/** Config field counts as override only when user set a non-default value. */
+function isIdentityOverride(value, defaults = []) {
+  const v = String(value ?? "").trim();
+  if (!v) {
+    return false;
+  }
+  return !defaults.some((d) => String(d).trim().toLowerCase() === v.toLowerCase());
+}
+
 /**
  * One VIDEO_DOORBELL accessory: camera + lock + motion + two-way (Amcrest talkback).
  */
@@ -77,11 +88,12 @@ class DahuaVtoAccessory {
 
     const { Service, Characteristic, Categories } = this.hap;
     this.infoService = accessory.getService(Service.AccessoryInformation);
+    // Placeholders until magicBox.cgi returns real VTO identity (never use IP as serial)
     this.infoService
-      .setCharacteristic(Characteristic.Manufacturer, this.config.manufacturer)
-      .setCharacteristic(Characteristic.Model, this.config.model)
-      .setCharacteristic(Characteristic.SerialNumber, this.config.dahua.host)
-      .setCharacteristic(Characteristic.FirmwareRevision, this.config.firmware);
+      .setCharacteristic(Characteristic.Manufacturer, this.config.manufacturer || "Dahua")
+      .setCharacteristic(Characteristic.Model, this.config.model || "VTO")
+      .setCharacteristic(Characteristic.SerialNumber, this.config.serialNumber || "00000000")
+      .setCharacteristic(Characteristic.FirmwareRevision, this.config.firmware || "0.0.0");
 
     // Prefer doorbell category
     accessory.category = Categories.VIDEO_DOORBELL;
@@ -131,11 +143,14 @@ class DahuaVtoAccessory {
     this._setupSensors();
     this._wireEvents();
 
-    // Defer CGI until after HAP has published
+    // Fetch real Manufacturer / Model / Serial / Firmware from VTO ASAP
     setTimeout(() => {
-      this._refreshDeviceInfo()
-        .catch((err) => this.log.warn(`Device info: ${err.message}`))
-        .then(() => this._checkMotionDetect())
+      this._refreshDeviceInfo().catch((err) => this.log.warn(`Device info: ${err.message}`));
+    }, 0);
+
+    // Defer event stream until HAP is up
+    setTimeout(() => {
+      this._checkMotionDetect()
         .catch((err) => this.log.debug(`MotionDetect check: ${err.message}`))
         .finally(() => {
           try {
@@ -162,16 +177,28 @@ class DahuaVtoAccessory {
       return;
     }
 
-    if (!this.config.manufacturerOverride && info.manufacturer) {
-      svc.setCharacteristic(Characteristic.Manufacturer, info.manufacturer);
-      this.config.manufacturer = info.manufacturer;
+    const manufacturer = this.config.manufacturerOverride
+      ? this.config.manufacturer
+      : info.manufacturer || "Dahua";
+    const model = this.config.modelOverride ? this.config.model : info.model || "VTO";
+    const serial = this.config.serialOverride
+      ? this.config.serialNumber
+      : info.serialNumber || "";
+    const firmware = this.config.firmwareOverride ? this.config.firmware : info.firmware || "1.0.0";
+
+    if (manufacturer) {
+      svc.setCharacteristic(Characteristic.Manufacturer, manufacturer);
+      this.config.manufacturer = manufacturer;
     }
-    if (!this.config.modelOverride && info.model) {
-      svc.setCharacteristic(Characteristic.Model, info.model);
-      this.config.model = info.model;
+    if (model) {
+      svc.setCharacteristic(Characteristic.Model, model);
+      this.config.model = model;
     }
-    if (info.serialNumber && info.serialNumber.length >= 2) {
-      svc.setCharacteristic(Characteristic.SerialNumber, info.serialNumber);
+    if (serial && serial.length >= 2) {
+      svc.setCharacteristic(Characteristic.SerialNumber, serial);
+      this.config.serialNumber = serial;
+    } else if (!this.config.serialOverride) {
+      this.log.warn("VTO did not return serialNumber from getSystemInfo");
     }
     if (info.hardwareRevision) {
       try {
@@ -180,14 +207,15 @@ class DahuaVtoAccessory {
         /* older HAP without HardwareRevision */
       }
     }
-    if (!this.config.firmwareOverride && info.firmware) {
-      svc.setCharacteristic(Characteristic.FirmwareRevision, info.firmware);
-      this.config.firmware = info.firmware;
+    if (firmware) {
+      svc.setCharacteristic(Characteristic.FirmwareRevision, firmware);
+      this.config.firmware = firmware;
     }
 
     this.log.info(
-      `Device identity from VTO: model=${info.model || "?"} ` +
-        `serial=${info.serialNumber || "?"} firmware=${info.firmware || "?"}`
+      `Device identity from VTO: vendor=${manufacturer} model=${model} ` +
+        `serial=${serial || "?"} firmware=${firmware}` +
+        (info.firmwareFull && info.firmwareFull !== firmware ? ` (${info.firmwareFull})` : "")
     );
   }
 

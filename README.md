@@ -19,7 +19,8 @@ Built as a [dynamic platform](https://developers.homebridge.io/#/#dynamic-platfo
 - **Card access** and **exit button** contact sensors (from CGI events)
 - Optional HomeKit Secure Video (HKSV, off by default)
 - **Debug logging** for testing other models and filing issues
-- Auto device model / serial from `magicBox.cgi`
+- Auto device identity from VTO: vendor (`getVendor`), model & serial (`getSystemInfo`), firmware (`getSoftwareVersion`)
+
 ## Requirements
 
 - [Homebridge](https://homebridge.io/) `^1.8` / `^2`
@@ -52,7 +53,6 @@ Restart Homebridge, then configure the platform in the UI (or `config.json`). Th
           "host": "192.168.1.30",
           "username": "admin",
           "password": "YOUR_PASSWORD",
-          "model": "DHI-VTO2211G-WP",
           "doorChannel": 1,
           "unlockSeconds": 5,
           "twoWayAudio": true,
@@ -83,7 +83,12 @@ Restart Homebridge, then configure the platform in the UI (or `config.json`). Th
 | `exitSensor` | `true` | Contact «Exit Button» |
 | `exitAlarmIndex` | `3` | AlarmLocal index for exit (VTO2111D/2211G) |
 | `sensorPulseMs` | `3000` | How long contact stays “open” |
-| `model` | auto | Override; leave default to use magicBox |
+| `manufacturer` | auto | Override; empty = getVendor from VTO |
+| `model` | auto | Override; empty = deviceType from VTO |
+| `serialNumber` | auto | Override; empty = serial from getSystemInfo |
+| `firmware` | auto | Override; empty = real version from getSoftwareVersion |
+
+If Home still shows the VTO **IP as serial** after update, remove the cached accessory in Homebridge UI and re-pair (HomeKit caches serial at pairing time).
 
 ## Supported models
 

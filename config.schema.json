@@ -146,15 +146,27 @@
               "maximum": 30000
             },
             "manufacturer": {
-              "title": "Manufacturer",
+              "title": "Manufacturer override",
               "type": "string",
-              "default": "Dahua"
+              "default": "",
+              "description": "Optional. Leave empty to auto-fill from VTO (magicBox getVendor), usually Dahua."
             },
             "model": {
-              "title": "Model",
+              "title": "Model override",
               "type": "string",
-              "default": "VTO",
-              "description": "Optional override. Leave default to auto-fill from VTO (magicBox getSystemInfo), e.g. VTO2111D-P-S2."
+              "default": "",
+              "description": "Optional. Leave empty to auto-fill from VTO (deviceType), e.g. VTO2111D-P-S2."
+            },
+            "serialNumber": {
+              "title": "Serial number override",
+              "type": "string",
+              "description": "Optional. Leave empty to use VTO serialNumber from getSystemInfo."
+            },
+            "firmware": {
+              "title": "Firmware override",
+              "type": "string",
+              "default": "",
+              "description": "Optional. Leave empty to auto-fill from getSoftwareVersion."
             }
           }
         }

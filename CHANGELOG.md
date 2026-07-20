@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.9] — 2026-07-20
+
+- HomeKit identity from VTO API: **getVendor**, **getSystemInfo** (model, serial), **getSoftwareVersion** (real firmware string)
+- Serial number no longer defaults to VTO IP; refresh runs immediately at start
+- Config manufacturer/model/firmware/serial are optional overrides only (leave empty for auto)
+
+---
+
 ## [1.0.8] — 2026-07-20
 
 - Option `enableMotionDetect` (default **true**): at start, if VTO MotionDetect is off, enable it via `configManager.cgi?action=setConfig&MotionDetect[0].Enable=true`

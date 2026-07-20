@@ -110,34 +110,43 @@ class DahuaClient extends EventEmitter {
   }
 
   /**
-   * Real device identity from magicBox.cgi (getSystemInfo + getSoftwareVersion).
-   * Example getSystemInfo:
-   *   deviceType=VTO2111D-P-S2
-   *   serialNumber=7E02BF7PAJD7071
-   *   hardwareVersion=1.00
+   * Real device identity from magicBox.cgi:
+   *   getSystemInfo, getSoftwareVersion, getVendor
    */
   async getDeviceInfo() {
     const sys = await this._magicBox("getSystemInfo");
-    let soft = {};
-    try {
-      soft = await this._magicBox("getSoftwareVersion");
-    } catch (err) {
-      this.log.debug(`getSoftwareVersion: ${err.message}`);
-    }
+    const [soft, vendor] = await Promise.all([
+      this._magicBox("getSoftwareVersion").catch((err) => {
+        this.log.debug(`getSoftwareVersion: ${err.message}`);
+        return {};
+      }),
+      this._magicBox("getVendor").catch((err) => {
+        this.log.debug(`getVendor: ${err.message}`);
+        return {};
+      }),
+    ]);
 
-    const model = sys.deviceType || sys.updateSerial || "";
-    const serialNumber = sys.serialNumber || "";
-    const hardwareRevision = sys.hardwareVersion || "";
-    const firmware =
-      soft.version || soft.Version || soft.softwareVersion || hardwareRevision || "";
+    const model = sys.deviceType || sys.updateSerial || sys.DeviceType || "";
+    const serialNumber = sys.serialNumber || sys.SerialNumber || "";
+    const hardwareRevision = sys.hardwareVersion || sys.HardwareVersion || "";
+    const firmwareRaw =
+      soft.version ||
+      soft.Version ||
+      soft.softwareVersion ||
+      sys.version ||
+      sys.Version ||
+      "";
+    const manufacturer =
+      vendor.vendor || vendor.Vendor || sys.vendor || sys.Vendor || "Dahua";
 
     const info = {
-      manufacturer: "Dahua",
+      manufacturer: String(manufacturer).trim(),
       model: String(model).trim(),
       serialNumber: String(serialNumber).trim(),
       hardwareRevision: String(hardwareRevision).trim(),
-      firmware: normalizeFirmware(firmware),
-      raw: { ...sys, ...soft },
+      firmware: formatFirmware(firmwareRaw),
+      firmwareFull: String(firmwareRaw).trim(),
+      raw: { ...sys, ...soft, ...vendor },
     };
     this.log.debug(`Device info: ${JSON.stringify(info.raw)}`);
     return info;
@@ -509,7 +518,7 @@ function buildDigestAuth({ challenge, method, url, username, password }) {
 module.exports = {
   DahuaClient,
   parseDahuaKeyValues,
-  normalizeFirmware,
+  formatFirmware,
   isMotionStart,
   isMotionStop,
 };
@@ -563,19 +572,14 @@ function parseDahuaKeyValues(body) {
   return out;
 }
 
-/** HomeKit FirmwareRevision prefers x.y.z — normalize Dahua strings when possible. */
-function normalizeFirmware(raw) {
+/** Keep real Dahua firmware string for HomeKit (e.g. 4.500.0000000.8.R). */
+function formatFirmware(raw) {
   const s = String(raw || "").trim();
   if (!s) {
     return "1.0.0";
   }
-  // Already looks like a.b.c...
-  if (/^\d+(\.\d+){1,3}/.test(s)) {
-    const parts = s.split(/[^0-9]+/).filter(Boolean).slice(0, 3);
-    while (parts.length < 3) {
-      parts.push("0");
-    }
-    return parts.join(".");
-  }
-  return s.slice(0, 64) || "1.0.0";
+  // "4.500.0000000.8.R,build:2021-02-03" → "4.500.0000000.8.R"
+  const main = s.split(",")[0].trim();
+  // HomeKit string limit
+  return main.slice(0, 64) || "1.0.0";
 }
