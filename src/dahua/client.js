@@ -177,7 +177,7 @@ class DahuaClient extends EventEmitter {
       // table.MotionDetect[0].Enable=true  or  MotionDetect[0].Enable=true
       let enabled = null;
       for (const [k, v] of Object.entries(props)) {
-        if (/MotionDetect\[\d+\]\.Enable$/i.test(k) || /\.Enable$/i.test(k) && /MotionDetect/i.test(k)) {
+        if (/MotionDetect\[\d+\]\.Enable$/i.test(k) || (/\.Enable$/i.test(k) && /MotionDetect/i.test(k))) {
           enabled = v === "true" || v === "1" || v === true;
           break;
         }
@@ -191,6 +191,44 @@ class DahuaClient extends EventEmitter {
     } catch (err) {
       return { ok: false, enabled: null, error: err.message };
     }
+  }
+
+  /**
+   * Enable/disable MotionDetect via configManager setConfig (channel 0 = video channel).
+   * Same CGI as:
+   *   .../configManager.cgi?action=setConfig&MotionDetect[0].Enable=true
+   */
+  async setMotionDetect(enabled, channel = 0) {
+    const ch = Number.isFinite(Number(channel)) ? Number(channel) : 0;
+    const on = Boolean(enabled);
+    const url =
+      `${this.config.baseUrl}configManager.cgi?action=setConfig` +
+      `&MotionDetect[${ch}].Enable=${on}`;
+    const res = await digestRequest(url, {
+      username: this.config.username,
+      password: this.config.password,
+      timeoutMs: 10000,
+    });
+    const body = String(res.body || "").trim();
+    if (res.statusCode < 200 || res.statusCode >= 300 || !/OK/i.test(body)) {
+      // Fallback used by some IPC firmwares
+      const url2 =
+        `${this.config.baseUrl}configManager.cgi?action=setConfig` +
+        `&MotionDetect[${ch}].Enable=${on}&MotionDetect[${ch}].DetectVersion=V3.0`;
+      const res2 = await digestRequest(url2, {
+        username: this.config.username,
+        password: this.config.password,
+        timeoutMs: 10000,
+      });
+      const body2 = String(res2.body || "").trim();
+      if (res2.statusCode < 200 || res2.statusCode >= 300 || !/OK/i.test(body2)) {
+        throw new Error(
+          `setMotionDetect failed: HTTP ${res.statusCode} ${body} / fallback HTTP ${res2.statusCode} ${body2}`
+        );
+      }
+      return body2;
+    }
+    return body;
   }
 
   startEventStream() {

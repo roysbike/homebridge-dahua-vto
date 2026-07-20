@@ -78,6 +78,7 @@ Restart Homebridge, then configure the platform in the UI (or `config.json`). Th
 | `hksv` | `false` | Enable after live view/talkback work |
 | `accessoryId` | `name` | Stable HomeKit UUID seed — do not change after pairing |
 | `motionTimeoutMs` | `10000` | Auto-clear motion |
+| `enableMotionDetect` | `true` | Auto-enable VTO MotionDetect via CGI at start |
 | `cardSensor` | `true` | Contact «Card Access» on card/fob |
 | `exitSensor` | `true` | Contact «Exit Button» |
 | `exitAlarmIndex` | `3` | AlarmLocal index for exit (VTO2111D/2211G) |
@@ -108,7 +109,7 @@ CGI API is shared across many Dahua / Amcrest door stations.
 | `ECONNREFUSED` on event stream | `host` must be the **VTO IP**, not the Homebridge host |
 | No talkback / garbled audio | Use ffmpeg-for-homebridge (`libfdk_aac`); keep `twoWayAudio: true` |
 | No doorbell on another model | Enable `debug`, ring button, file an issue with CGI event codes |
-| Walk-by motion / HKSV never records | Enable **Motion Detection** (or SMD) in VTO web UI. With `debug=true` you must see `VideoMotion` / `SmartMotionHuman`. Doorbell/card still trigger motion. |
+| Walk-by motion / HKSV never records | Keep `enableMotionDetect: true` (default). Or enable Motion/SMD in VTO UI. With `debug=true` look for `VideoMotion` / `SmartMotionHuman`. |
 | Duplicate accessories after rename | Set fixed `accessoryId`; remove stale accessories in UI |
 
 ## License

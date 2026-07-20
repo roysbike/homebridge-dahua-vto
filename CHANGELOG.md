@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.8] — 2026-07-20
+
+- Option `enableMotionDetect` (default **true**): at start, if VTO MotionDetect is off, enable it via `configManager.cgi?action=setConfig&MotionDetect[0].Enable=true`
+
+---
+
 ## [1.0.7] — 2026-07-20
 
 - Fix walk-by motion / HKSV: map SmartMotionHuman, CrossLine/Region, FaceDetection, etc. (not only VideoMotion)

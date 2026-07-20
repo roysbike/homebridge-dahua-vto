@@ -114,6 +114,12 @@
               "type": "integer",
               "default": 10000
             },
+            "enableMotionDetect": {
+              "title": "Enable VTO MotionDetect on start",
+              "type": "boolean",
+              "default": true,
+              "description": "If motion detection is off on the VTO, turn it on at plugin start via configManager setConfig (needed for walk-by motion / HKSV)."
+            },
             "cardSensor": {
               "title": "Card access sensor",
               "type": "boolean",

@@ -53,6 +53,8 @@ function normalizeDeviceConfig(raw) {
       exit: raw.exitSensor !== false,
       pulseMs: Number(raw.sensorPulseMs || 3000),
     },
+    // Ensure VTO MotionDetect is on at plugin start (for walk-by / HKSV)
+    enableMotionDetect: raw.enableMotionDetect !== false,
     hksv: {
       enabled: hksv,
       prebufferMs: Number(raw.hksvPrebufferMs || 4000),
@@ -193,20 +195,59 @@ class DahuaVtoAccessory {
     const status = await this.dahua.getMotionDetectStatus();
     if (!status.ok) {
       this.log.debug(`MotionDetect config unavailable: ${status.error || status.raw || "?"}`);
+      if (this.config.enableMotionDetect) {
+        try {
+          await this.dahua.setMotionDetect(true);
+          this.log.info("MotionDetect: setConfig Enable=true (status was unavailable)");
+        } catch (err) {
+          this.log.warn(`MotionDetect enable failed: ${err.message}`);
+        }
+      }
       return;
     }
-    if (status.enabled === false) {
-      this.log.warn(
-        "VTO MotionDetect is DISABLED — HomeKit will not see walk-by motion / HKSV clips. " +
-          "Enable Motion Detection (or SMD/IVS) in the VTO web UI, then walk in front of the camera " +
-          "with debug=true and look for VideoMotion / SmartMotionHuman events."
-      );
-    } else if (status.enabled === true) {
+
+    if (status.enabled === true) {
       this.log.info("VTO MotionDetect is enabled");
-    } else {
-      this.log.info(
-        "Could not parse MotionDetect.Enable — if walk-by motion is missing, enable it in VTO web UI"
-      );
+      return;
+    }
+
+    if (status.enabled === false) {
+      if (this.config.enableMotionDetect) {
+        try {
+          await this.dahua.setMotionDetect(true);
+          const again = await this.dahua.getMotionDetectStatus();
+          if (again.enabled === true) {
+            this.log.info("VTO MotionDetect was off — enabled via CGI at plugin start");
+          } else {
+            this.log.warn(
+              "MotionDetect setConfig returned OK but Enable is still not true — check VTO web UI / schedule"
+            );
+          }
+        } catch (err) {
+          this.log.warn(
+            `VTO MotionDetect is DISABLED and auto-enable failed: ${err.message}. ` +
+              "Enable Motion Detection in the VTO web UI for walk-by / HKSV."
+          );
+        }
+      } else {
+        this.log.warn(
+          "VTO MotionDetect is DISABLED — HomeKit will not see walk-by motion / HKSV clips. " +
+            "Set enableMotionDetect=true (default) or enable Motion Detection in the VTO web UI."
+        );
+      }
+      return;
+    }
+
+    this.log.info(
+      "Could not parse MotionDetect.Enable — if walk-by motion is missing, enable it in VTO web UI"
+    );
+    if (this.config.enableMotionDetect) {
+      try {
+        await this.dahua.setMotionDetect(true);
+        this.log.info("MotionDetect: attempted setConfig Enable=true");
+      } catch (err) {
+        this.log.warn(`MotionDetect enable failed: ${err.message}`);
+      }
     }
   }
 
