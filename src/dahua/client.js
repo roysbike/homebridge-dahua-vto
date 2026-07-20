@@ -265,6 +265,7 @@ class DahuaClient extends EventEmitter {
 
     const codeMatch = text.match(/Code=([^;]+)/i);
     const actionMatch = text.match(/action=([^;]+)/i);
+    const indexMatch = text.match(/index=([^;]+)/i);
     if (!codeMatch) {
       if (this.config.debug) {
         this.log.debug(`Event chunk without Code=: ${text.slice(0, 200)}`);
@@ -274,6 +275,7 @@ class DahuaClient extends EventEmitter {
 
     const code = codeMatch[1].trim();
     const action = actionMatch ? actionMatch[1].trim() : "Pulse";
+    const index = indexMatch ? Number(indexMatch[1].trim()) : 0;
     let data = {};
     const dataMatch = text.match(/data=(\{[\s\S]*\})/i);
     if (dataMatch) {
@@ -284,11 +286,22 @@ class DahuaClient extends EventEmitter {
       }
     }
 
-    const event = { Code: code, Action: action, Data: data, raw: text };
+    const event = { Code: code, Action: action, Index: index, Data: data, raw: text };
     this.log.debug(`Event ${code}/${action}` + (this.config.debug ? ` raw=${text}` : ""));
     this.emit("event", event);
 
-    // Scrypted AmcrestEvent mappings for Dahua doorbell
+    // Benign noise — acknowledge so debug is not flooded
+    const ignore = new Set([
+      "SIPRegisterResult",
+      "TimeChange",
+      "NTPAdjustTime",
+      "RtspSessionDisconnect",
+    ]);
+    if (ignore.has(code)) {
+      return;
+    }
+
+    // Scrypted AmcrestEvent mappings + VTO2111D / VTO2211G field events
     let handled = true;
     if (code === "VideoMotion" && action === "Start") {
       this.emit("motion", true, event);
@@ -301,6 +314,9 @@ class DahuaClient extends EventEmitter {
       this.emit("doorbell", event);
     } else if (code === "_DoTalkAction_" && (action === "Invite" || action === "Pulse")) {
       this.emit("doorbell", event);
+    } else if (code === "Invite" && action === "Pulse") {
+      // Same call as CallNoAnswered on many VTOs — doorbell only (dedupe in accessory)
+      this.emit("doorbell", event);
     } else if (code === "BackKeyLight") {
       const state = data?.State;
       if (state === 1 || state === 8 || state === "1" || state === "8") {
@@ -308,8 +324,45 @@ class DahuaClient extends EventEmitter {
       } else {
         handled = false;
       }
+    } else if (code === "DoorCard") {
+      // Card presented: data.Number = hex card id
+      this.emit("card", {
+        ...event,
+        cardNo: String(data?.Number || data?.CardNo || "").trim(),
+      });
     } else if (code === "AccessControl") {
       this.emit("accessControl", event);
+      const cardNo = String(data?.CardNo || "").trim();
+      const name = String(data?.Name || "");
+      const status = data?.Status;
+      const method = Number(data?.Method);
+      const opened = name === "OpenDoor" && (status === 1 || status === "1");
+
+      if (cardNo) {
+        this.emit("card", { ...event, cardNo });
+      } else if (opened && (method === 5 || method === 4)) {
+        // Method 5 = exit button OpenDoor on VTO2111D / VTO2211G
+        this.emit("exit", event);
+      }
+
+      if (opened) {
+        this.emit("doorOpened", {
+          door: this.config.doorChannel,
+          source: cardNo ? "card" : method === 5 ? "exit" : "accessControl",
+          cardNo,
+          event,
+        });
+      }
+    } else if (code === "AlarmLocal" && action === "Start") {
+      // Exit button on tested VTOs uses AlarmLocal index=3
+      const exitIndex = this.config.exitAlarmIndex;
+      if (exitIndex == null || Number(exitIndex) === index) {
+        this.emit("exit", event);
+      } else {
+        this.emit("alarmLocal", event);
+      }
+    } else if (code === "AlarmLocal" && action === "Stop") {
+      // paired with Start — ignore
     } else {
       handled = false;
     }

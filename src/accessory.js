@@ -45,6 +45,13 @@ function normalizeDeviceConfig(raw) {
       unlockSeconds,
       eventCodes: raw.eventCodes || "All",
       debug,
+      // AlarmLocal index for exit button (VTO2111D / VTO2211G log: index=3)
+      exitAlarmIndex: raw.exitAlarmIndex != null ? Number(raw.exitAlarmIndex) : 3,
+    },
+    sensors: {
+      card: raw.cardSensor !== false,
+      exit: raw.exitSensor !== false,
+      pulseMs: Number(raw.sensorPulseMs || 3000),
     },
     hksv: {
       enabled: hksv,
@@ -83,6 +90,10 @@ class DahuaVtoAccessory {
     this.unlocking = false;
     this.targetState = Characteristic.LockTargetState.SECURED;
     this.currentState = Characteristic.LockCurrentState.SECURED;
+    this._sensorTimers = new Map();
+    this._lastDoorbellAt = 0;
+    this._lastCardAt = 0;
+    this._lastExitAt = 0;
 
     this.dahua = new DahuaClient(this.config.dahua, this.log);
     this.delegate = new VtoCameraDelegate({
@@ -115,6 +126,7 @@ class DahuaVtoAccessory {
     }
 
     this._setupLock();
+    this._setupSensors();
     this._wireEvents();
 
     // Defer CGI until after HAP has published
@@ -133,7 +145,8 @@ class DahuaVtoAccessory {
     this.log.info(
       `Ready @ ${this.config.dahua.host} ` +
         `(model=${this.config.model}, twoWay=${this.config.twoWayAudio}, ` +
-        `hksv=${this.config.hksv.enabled}, debug=${this.config.debug})`
+        `hksv=${this.config.hksv.enabled}, card=${this.config.sensors.card}, ` +
+        `exit=${this.config.sensors.exit}, debug=${this.config.debug})`
     );
   }
 
@@ -241,6 +254,96 @@ class DahuaVtoAccessory {
       });
   }
 
+  _setupSensors() {
+    const { Service, Characteristic } = this.hap;
+    const doorbellService = this.accessory.getService(Service.Doorbell);
+
+    if (this.config.sensors.card) {
+      this.cardService =
+        this.accessory.getServiceById(Service.ContactSensor, "card") ||
+        this.accessory.getService("Card Access") ||
+        this.accessory.addService(Service.ContactSensor, "Card Access", "card");
+      this.cardService.updateCharacteristic(
+        Characteristic.ContactSensorState,
+        Characteristic.ContactSensorState.CONTACT_DETECTED
+      );
+      try {
+        doorbellService?.addLinkedService(this.cardService);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (this.config.sensors.exit) {
+      this.exitService =
+        this.accessory.getServiceById(Service.ContactSensor, "exit") ||
+        this.accessory.getService("Exit Button") ||
+        this.accessory.addService(Service.ContactSensor, "Exit Button", "exit");
+      this.exitService.updateCharacteristic(
+        Characteristic.ContactSensorState,
+        Characteristic.ContactSensorState.CONTACT_DETECTED
+      );
+      try {
+        doorbellService?.addLinkedService(this.exitService);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  /**
+   * Pulse a contact sensor: CONTACT_NOT_DETECTED = "triggered" for automations,
+   * then back to CONTACT_DETECTED (idle closed).
+   */
+  _pulseContact(service, key, reason = "") {
+    if (!service) {
+      return;
+    }
+    const { Characteristic } = this.hap;
+    service.updateCharacteristic(
+      Characteristic.ContactSensorState,
+      Characteristic.ContactSensorState.CONTACT_NOT_DETECTED
+    );
+    this.log.info(`Sensor ${key} triggered${reason ? ` (${reason})` : ""}`);
+
+    const prev = this._sensorTimers.get(key);
+    if (prev) {
+      clearTimeout(prev);
+    }
+    const t = setTimeout(() => {
+      service.updateCharacteristic(
+        Characteristic.ContactSensorState,
+        Characteristic.ContactSensorState.CONTACT_DETECTED
+      );
+      this._sensorTimers.delete(key);
+    }, this.config.sensors.pulseMs);
+    this._sensorTimers.set(key, t);
+  }
+
+  _markDoorUnlocked(source = "") {
+    const { Characteristic } = this.hap;
+    if (!this.lockService) {
+      return;
+    }
+    this.targetState = Characteristic.LockTargetState.UNSECURED;
+    this.currentState = Characteristic.LockCurrentState.UNSECURED;
+    this.lockService.updateCharacteristic(Characteristic.LockTargetState, this.targetState);
+    this.lockService.updateCharacteristic(Characteristic.LockCurrentState, this.currentState);
+    this.log.info(`Door unlocked (${source || "event"})`);
+
+    if (this.lockTimeout) {
+      clearTimeout(this.lockTimeout);
+    }
+    this.lockTimeout = setTimeout(() => {
+      this.targetState = Characteristic.LockTargetState.SECURED;
+      this.currentState = Characteristic.LockCurrentState.SECURED;
+      this.lockService.updateCharacteristic(Characteristic.LockTargetState, this.targetState);
+      this.lockService.updateCharacteristic(Characteristic.LockCurrentState, this.currentState);
+      this.unlocking = false;
+      this.log.info("Door re-secured");
+    }, this.config.dahua.unlockSeconds * 1000);
+  }
+
   setMotion(active, reason = "") {
     const { Service, Characteristic } = this.hap;
     this.motionActive = Boolean(active);
@@ -266,12 +369,49 @@ class DahuaVtoAccessory {
     });
 
     this.dahua.on("doorbell", (event) => {
+      const now = Date.now();
+      // CallNoAnswered + Invite often arrive together — one Home notification
+      if (now - this._lastDoorbellAt < 2500) {
+        this.log.debug(`Doorbell deduped (${event?.Code || "unknown"})`);
+        return;
+      }
+      this._lastDoorbellAt = now;
       this.log.info(`Doorbell ring (${event?.Code || "unknown"})`);
       this.setMotion(true, "doorbell");
       try {
         this.controller.ringDoorbell();
       } catch (err) {
         this.log.warn(`ringDoorbell failed: ${err.message}`);
+      }
+    });
+
+    this.dahua.on("card", (event) => {
+      const now = Date.now();
+      if (now - this._lastCardAt < 2000) {
+        return;
+      }
+      this._lastCardAt = now;
+      const cardNo = event?.cardNo || event?.Data?.Number || event?.Data?.CardNo || "";
+      this.log.info(`Card access${cardNo ? ` (${cardNo})` : ""}`);
+      this._pulseContact(this.cardService, "card", cardNo || event?.Code);
+      this.setMotion(true, "card");
+    });
+
+    this.dahua.on("exit", (event) => {
+      const now = Date.now();
+      if (now - this._lastExitAt < 2000) {
+        return;
+      }
+      this._lastExitAt = now;
+      this.log.info(`Exit button (${event?.Code || "unknown"} index=${event?.Index ?? "?"})`);
+      this._pulseContact(this.exitService, "exit", event?.Code);
+      this.setMotion(true, "exit");
+    });
+
+    this.dahua.on("doorOpened", (info) => {
+      // Physical open (card / exit / accessControl) — mirror lock in Home
+      if (!this.unlocking) {
+        this._markDoorUnlocked(info?.source || "accessControl");
       }
     });
   }
@@ -288,6 +428,10 @@ class DahuaVtoAccessory {
     if (this.lockTimeout) {
       clearTimeout(this.lockTimeout);
     }
+    for (const t of this._sensorTimers.values()) {
+      clearTimeout(t);
+    }
+    this._sensorTimers.clear();
   }
 }
 

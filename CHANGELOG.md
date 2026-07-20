@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.6] — 2026-07-20
+
+- Card access: Contact sensor «Card Access» (`DoorCard` / `AccessControl` with CardNo)
+- Exit button: Contact sensor «Exit Button» (`AlarmLocal` index 3 + AccessControl Method=5)
+- Sync Lock to unlocked when door opens via card/exit
+- Doorbell dedupe for `CallNoAnswered` + `Invite`
+- Quiet debug noise (`SIPRegisterResult`, `TimeChange`, `NTPAdjustTime`, …)
+
+---
+
 ## [1.0.5] — 2026-07-20
 
 - Auto-fill HomeKit Accessory Information from VTO `magicBox.cgi` (`getSystemInfo` / `getSoftwareVersion`): model, serial, hardware, firmware

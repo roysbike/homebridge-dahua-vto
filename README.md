@@ -16,9 +16,10 @@ Built as a [dynamic platform](https://developers.homebridge.io/#/#dynamic-platfo
 - Motion sensor
 - Door lock / unlock (`accessControl.cgi`)
 - Two-way audio (`audio.cgi` G.711A, Scrypted Amcrest-style)
+- **Card access** and **exit button** contact sensors (from CGI events)
 - Optional HomeKit Secure Video (HKSV, off by default)
 - **Debug logging** for testing other models and filing issues
-
+- Auto device model / serial from `magicBox.cgi`
 ## Requirements
 
 - [Homebridge](https://homebridge.io/) `^1.8` / `^2`
@@ -77,7 +78,11 @@ Restart Homebridge, then configure the platform in the UI (or `config.json`). Th
 | `hksv` | `false` | Enable after live view/talkback work |
 | `accessoryId` | `name` | Stable HomeKit UUID seed — do not change after pairing |
 | `motionTimeoutMs` | `10000` | Auto-clear motion |
-| `model` | `VTO` | Shown in Home app |
+| `cardSensor` | `true` | Contact «Card Access» on card/fob |
+| `exitSensor` | `true` | Contact «Exit Button» |
+| `exitAlarmIndex` | `3` | AlarmLocal index for exit (VTO2111D/2211G) |
+| `sensorPulseMs` | `3000` | How long contact stays “open” |
+| `model` | auto | Override; leave default to use magicBox |
 
 ## Supported models
 

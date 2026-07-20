@@ -3,5 +3,7 @@ package-lock.json
 *.tgz
 .DS_Store
 *.log
+*.log.txt
+homebridge-dahua-vto.log.txt
 .idea/
 .vscode/

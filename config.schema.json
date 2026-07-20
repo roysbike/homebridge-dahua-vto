@@ -114,6 +114,31 @@
               "type": "integer",
               "default": 10000
             },
+            "cardSensor": {
+              "title": "Card access sensor",
+              "type": "boolean",
+              "default": true,
+              "description": "Contact sensor «Card Access» when a card/fob is presented (DoorCard / AccessControl)."
+            },
+            "exitSensor": {
+              "title": "Exit button sensor",
+              "type": "boolean",
+              "default": true,
+              "description": "Contact sensor «Exit Button» (AlarmLocal + AccessControl Method=5)."
+            },
+            "exitAlarmIndex": {
+              "title": "Exit AlarmLocal index",
+              "type": "integer",
+              "default": 3,
+              "description": "AlarmLocal index for the exit button (VTO2111D / VTO2211G: usually 3)."
+            },
+            "sensorPulseMs": {
+              "title": "Sensor pulse duration (ms)",
+              "type": "integer",
+              "default": 3000,
+              "minimum": 500,
+              "maximum": 30000
+            },
             "manufacturer": {
               "title": "Manufacturer",
               "type": "string",
