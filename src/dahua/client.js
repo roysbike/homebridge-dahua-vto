@@ -157,6 +157,42 @@ class DahuaClient extends EventEmitter {
     return parseDahuaKeyValues(body);
   }
 
+  /**
+   * Check if VTO has motion detection enabled (needed for HKSV / HomeKit motion).
+   * Many VTOs leave MotionDetect off — then eventManager never sends VideoMotion.
+   */
+  async getMotionDetectStatus() {
+    const url = `${this.config.baseUrl}configManager.cgi?action=getConfig&name=MotionDetect`;
+    try {
+      const res = await digestRequest(url, {
+        username: this.config.username,
+        password: this.config.password,
+        timeoutMs: 8000,
+      });
+      const body = String(res.body || "");
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return { ok: false, enabled: null, raw: body.slice(0, 200) };
+      }
+      const props = parseDahuaKeyValues(body);
+      // table.MotionDetect[0].Enable=true  or  MotionDetect[0].Enable=true
+      let enabled = null;
+      for (const [k, v] of Object.entries(props)) {
+        if (/MotionDetect\[\d+\]\.Enable$/i.test(k) || /\.Enable$/i.test(k) && /MotionDetect/i.test(k)) {
+          enabled = v === "true" || v === "1" || v === true;
+          break;
+        }
+      }
+      if (enabled === null && /Enable=true/i.test(body)) {
+        enabled = true;
+      } else if (enabled === null && /Enable=false/i.test(body)) {
+        enabled = false;
+      }
+      return { ok: true, enabled, raw: props };
+    } catch (err) {
+      return { ok: false, enabled: null, error: err.message };
+    }
+  }
+
   startEventStream() {
     this._stopped = false;
     this._connectEvents();
@@ -303,9 +339,13 @@ class DahuaClient extends EventEmitter {
 
     // Scrypted AmcrestEvent mappings + VTO2111D / VTO2211G field events
     let handled = true;
-    if (code === "VideoMotion" && action === "Start") {
+
+    // Motion / IVS / SMD — HomeKit + HKSV need MotionDetected
+    const motionStart = isMotionStart(code, action);
+    const motionStop = isMotionStop(code, action);
+    if (motionStart) {
       this.emit("motion", true, event);
-    } else if (code === "VideoMotion" && action === "Stop") {
+    } else if (motionStop) {
       this.emit("motion", false, event);
     } else if (code === "CallNoAnswered" && action === "Start") {
       this.emit("doorbell", event);
@@ -432,7 +472,42 @@ module.exports = {
   DahuaClient,
   parseDahuaKeyValues,
   normalizeFirmware,
+  isMotionStart,
+  isMotionStop,
 };
+
+/** Codes that mean “someone / something moved” for HomeKit + HKSV. */
+const MOTION_CODES = new Set([
+  "VideoMotion",
+  "VideoMotionInfo",
+  "SmartMotionHuman",
+  "SmartMotionVehicle",
+  "CrossLineDetection",
+  "CrossRegionDetection",
+  "FaceDetection",
+  "WanderDetection",
+  "MoveDetection",
+  "RioterDetection",
+  "LeftDetection",
+  "TakenAwayDetection",
+  "VideoAbnormalDetection",
+  "IntelliFrame",
+]);
+
+function isMotionStart(code, action) {
+  if (!MOTION_CODES.has(code)) {
+    return false;
+  }
+  // Start or Pulse (some firmware only pulses)
+  return action === "Start" || action === "Pulse";
+}
+
+function isMotionStop(code, action) {
+  if (!MOTION_CODES.has(code)) {
+    return false;
+  }
+  return action === "Stop";
+}
 
 function parseDahuaKeyValues(body) {
   const out = {};

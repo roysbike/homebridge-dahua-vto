@@ -133,6 +133,8 @@ class DahuaVtoAccessory {
     setTimeout(() => {
       this._refreshDeviceInfo()
         .catch((err) => this.log.warn(`Device info: ${err.message}`))
+        .then(() => this._checkMotionDetect())
+        .catch((err) => this.log.debug(`MotionDetect check: ${err.message}`))
         .finally(() => {
           try {
             this.dahua.startEventStream();
@@ -185,6 +187,27 @@ class DahuaVtoAccessory {
       `Device identity from VTO: model=${info.model || "?"} ` +
         `serial=${info.serialNumber || "?"} firmware=${info.firmware || "?"}`
     );
+  }
+
+  async _checkMotionDetect() {
+    const status = await this.dahua.getMotionDetectStatus();
+    if (!status.ok) {
+      this.log.debug(`MotionDetect config unavailable: ${status.error || status.raw || "?"}`);
+      return;
+    }
+    if (status.enabled === false) {
+      this.log.warn(
+        "VTO MotionDetect is DISABLED — HomeKit will not see walk-by motion / HKSV clips. " +
+          "Enable Motion Detection (or SMD/IVS) in the VTO web UI, then walk in front of the camera " +
+          "with debug=true and look for VideoMotion / SmartMotionHuman events."
+      );
+    } else if (status.enabled === true) {
+      this.log.info("VTO MotionDetect is enabled");
+    } else {
+      this.log.info(
+        "Could not parse MotionDetect.Enable — if walk-by motion is missing, enable it in VTO web UI"
+      );
+    }
   }
 
   _setupLock() {
@@ -347,8 +370,25 @@ class DahuaVtoAccessory {
   setMotion(active, reason = "") {
     const { Service, Characteristic } = this.hap;
     this.motionActive = Boolean(active);
-    const motionService = this.accessory.getService(Service.MotionSensor);
-    motionService?.updateCharacteristic(Characteristic.MotionDetected, this.motionActive);
+
+    // Prefer the MotionSensor created by DoorbellController (required for HKSV)
+    let motionService =
+      this.accessory.getService(Service.MotionSensor) ||
+      this.accessory.services?.find((s) => s.UUID === Service.MotionSensor.UUID);
+
+    if (!motionService) {
+      this.log.warn(`Motion service missing — cannot notify HomeKit (${reason || "motion"})`);
+      return;
+    }
+
+    const char = motionService.getCharacteristic(Characteristic.MotionDetected);
+    // updateValue notifies HomeKit / triggers HKSV when going true
+    if (typeof char.updateValue === "function") {
+      char.updateValue(this.motionActive);
+    } else {
+      motionService.updateCharacteristic(Characteristic.MotionDetected, this.motionActive);
+    }
+
     this.log.info(`Motion=${this.motionActive}${reason ? ` (${reason})` : ""}`);
     if (this.motionTimer) {
       clearTimeout(this.motionTimer);
@@ -357,7 +397,11 @@ class DahuaVtoAccessory {
     if (this.motionActive) {
       this.motionTimer = setTimeout(() => {
         this.motionActive = false;
-        motionService?.updateCharacteristic(Characteristic.MotionDetected, false);
+        if (typeof char.updateValue === "function") {
+          char.updateValue(false);
+        } else {
+          motionService.updateCharacteristic(Characteristic.MotionDetected, false);
+        }
         this.log.info("Motion auto-cleared");
       }, this.config.hksv.motionTimeoutMs);
     }

@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.7] — 2026-07-20
+
+- Fix walk-by motion / HKSV: map SmartMotionHuman, CrossLine/Region, FaceDetection, etc. (not only VideoMotion)
+- Accept VideoMotion `Pulse` as motion start
+- On startup, check VTO `MotionDetect.Enable` and warn if disabled (common reason HKSV never records walk-bys)
+- More reliable MotionDetected updates for HomeKit Secure Video
+
+---
+
 ## [1.0.6] — 2026-07-20
 
 - Card access: Contact sensor «Card Access» (`DoorCard` / `AccessControl` with CardNo)
